@@ -1,0 +1,31 @@
+<template>
+  <div id="app" class="app-main">
+    <router-view/>
+  </div>
+</template>
+
+<script>
+  export default {
+    name: 'App'
+  }
+</script>
+
+<style>
+  #app {
+    font-family: 'Avenir', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    color: #2c3e50;
+    margin-top: 20px;
+  }
+
+  .cell {
+    text-align: center;
+  }
+
+  .el-pager li.active {
+    border: 1px solid;
+    border-radius: 5px;
+  }
+</style>

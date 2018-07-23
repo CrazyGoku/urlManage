@@ -1,0 +1,1 @@
+export const SET_LOADING_ACTION = 'SET_LOADING_ACTION';
