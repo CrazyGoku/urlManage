@@ -87,3 +87,15 @@ export function expiryData() {
       })
   })
 }
+
+export function exportData() {
+  return new Promise(resolve => {
+    axios.get('/api/exportData')
+      .then(res => {
+        resolve(res)
+      })
+      .catch(err => {
+        console.log(err)
+      })
+  })
+}

@@ -4,6 +4,10 @@
       <el-header class="header">
         <el-button @click="batchHandleVisible = true">批量操作</el-button>
         <el-button @click="addDialogVisible=true">添加</el-button>
+        <el-button @click="dataExport">
+          导出Excel
+        </el-button>
+        <a style="display: none;" ref="downExcel" href="../../../static/urlsExport.xlsx" download="urlsExport">下载</a>
         <el-upload
           class="upload-button"
           action="/api/upload"
@@ -13,6 +17,7 @@
         >
           <el-button size="small" type="primary">点击上传Excel</el-button>
         </el-upload>
+
         <el-input
           placeholder="请输入查询域名"
           v-model="keyWord"
@@ -65,7 +70,7 @@
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
           :current-page.sync="currentPage"
-          :page-sizes="[10, 20, 30, 40]"
+          :page-sizes="[100, 200, 300, 400]"
           :page-size="pageSize"
           layout="total, sizes, prev, pager, next"
           :total="totalNum">
@@ -147,7 +152,7 @@
 </template>
 
 <script>
-  import {getData, addData, deleteData, updateData, findKeyWord, fileUpload} from '@/server/dashbord'
+  import {getData, addData, deleteData, updateData, findKeyWord, fileUpload, exportData} from '@/server/dashbord'
   import {mapGetters, mapMutations} from 'vuex';
   export default {
     name: 'dashbord',
@@ -166,12 +171,14 @@
           platform: ''
         },
         currentPage: 1,
-        pageSize: 10,
+        pageSize: 100,
         totalNum: 0,
         editData: {},
         editIndex: 0,
         loadingText:'Loading',
-        isUpload:false
+        isUpload:false,
+        sortType:'',
+        findKeywordFlag:false
       }
     },
     computed:{
@@ -198,6 +205,14 @@
       }
     },
     methods: {
+      // 导出数据
+      dataExport:function () {
+        exportData().then(res=>{
+          if(res.data.code){
+            this.$refs.downExcel.click()
+          }
+        })
+      },
       uploadSectionFile:function (param) {
         this.loadingText = '数据上传中'
         this.isUpload = true
@@ -218,6 +233,8 @@
       },
       // 清除查询条件
       clearKeyWord() {
+        this.currentPage = 1
+        this.findKeywordFlag = false
         this.refreshData()
       },
       deleteKeyWord() {
@@ -243,7 +260,7 @@
         this.currentPage = 1
         this.pageSize = val
         if (this.keyWord !== '') {
-          this.searchKeyword()
+          this.searchKeyword(this.sortType)
         } else {
           this.refreshData()
         }
@@ -252,7 +269,7 @@
       handleCurrentChange(val) {
         this.currentPage = val
         if (this.keyWord !== '') {
-          this.searchKeyword()
+          this.searchKeyword(this.sortType)
         } else {
           this.refreshData()
         }
@@ -350,6 +367,7 @@
       },
       // 排序
       sortData(e) {
+        this.sortType = e.order
         if (this.keyWord !== '') {
           this.searchKeyword(e.order)
         } else {
@@ -431,6 +449,10 @@
         if (sort) {
           params.sortType = sort
         }
+        if(!this.findKeywordFlag){
+          this.currentPage = 1
+        }
+        this.findKeywordFlag = true
         findKeyWord(params).then(res => {
           if (res.data.code === 1) {
             if (res.data.totalNum > 0) {

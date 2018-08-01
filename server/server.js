@@ -2,6 +2,7 @@ var express = require('express')
 var bodyParser = require('body-parser')
 var Url = require('./Urldb')
 var xlsx = require('node-xlsx');
+var fs = require('fs')
 var formidable = require('formidable');
 var explant = {
   __v: 0
@@ -30,22 +31,22 @@ app.get('/api/data', function (req, res) {
       filterParams.sort = {'time': -1}
     }
   }
-  var totalNum = 0
   Url.count({}, function (err, count) {
-    totalNum = count
-  })
-  Url.find({}, explant, filterParams, function (err, doc) {
-    if (doc) {
-      var docTo = {
-        totalNum,
-        data: doc,
-        code: 1
+    Url.find({}, explant, filterParams, function (err, doc) {
+      if (doc) {
+        var docTo = {
+          totalNum: count,
+          data: doc,
+          code: 1
+        }
+        res.json(docTo)
+      } else {
+        res.json({code: 0})
       }
-      res.json(docTo)
-    } else {
-      res.json({code: 0})
-    }
+    })
   })
+
+
 })
 
 // 查找数据
@@ -62,21 +63,19 @@ app.get('/api/findData', function (req, res) {
     }
   }
   var reg = new RegExp(req.query.keyWord, 'i')
-  var totalNum = 0
   Url.count({url: reg}, function (err, count) {
-    totalNum = count
-  })
-  Url.find({url: reg}, explant, filterParams, function (err, doc) {
-    if (doc) {
-      var docTo = {
-        totalNum,
-        data: doc,
-        code: 1
+    Url.find({url: reg}, explant, filterParams, function (err, doc) {
+      if (doc) {
+        var docTo = {
+          totalNum: count,
+          data: doc,
+          code: 1
+        }
+        res.json(docTo)
+      } else {
+        res.json({code: 0, msg: '系统错误'})
       }
-      res.json(docTo)
-    } else {
-      res.json({code: 0, msg: '系统错误'})
-    }
+    })
   })
 })
 
@@ -160,16 +159,17 @@ app.post('/api/update', function (req, res) {
     return res.json({code: 0, msg: '含有未查找到的域名'})
   }
 })
-app.post('/api/upload',function (req, res) {
+app.post('/api/upload', function (req, res) {
   // 新建一个form 传入上传的文件 用xlsx格式化传入的文件 遍历  如果有的话就更新 没有就创建
   var form = new formidable.IncomingForm();
-  form.parse(req, function(err, fields, files) {
+  form.parse(req, function (err, fields, files) {
     var file = files.uploadFile
     var list = xlsx.parse(file.path);
     var data = list[0].data
     var uploadAll = true
-    data.forEach(function (data,index) {
-      if(index>0){
+    console.log(data)
+    data.forEach(function (data, index) {
+      if (index > 0) {
         data[4] = new Date(1900, 0, data[4] - 1)
         var updata = {
           url: data[0],
@@ -225,6 +225,54 @@ app.get('/api/expiryData', function (req, res) {
   })
 })
 
+// 时间戳转换
+function fmtDate(obj) {
+  var date = new Date(obj);
+  var y = 1900 + date.getYear();
+  var m = "0" + (date.getMonth() + 1);
+  var d = "0" + date.getDate();
+  return y + "/" + m.substring(m.length - 2, m.length) + "/" + d.substring(d.length - 2, d.length);
+}
+
+// 导出数据
+app.get('/api/exportData', function (req, res) {
+  var explantData = {
+    _id: 0,
+    __v: 0
+  }
+  Url.find({}, explantData, function (err, doc) {
+    if (doc) {
+      var dataCon = []
+      dataCon[0] = []
+      dataCon[0].push('域名', '到期时间', '平台')
+      doc.forEach(function (item, index) {
+        dataCon[index + 1] = []
+        dataCon[index + 1].push(item['url'], fmtDate(item['time']), item['platform'])
+      })
+      var data = [{
+        name: 'firstsheet',
+        data: dataCon
+      }]
+      fs.writeFile('urlsExport.xlsx', xlsx.build(data), 'utf8',function (err) {
+        if(err){
+          res.json({code: 0, msg: '系统错误'})
+        }else{
+          fs.rename('./urlsExport.xlsx','./public/static/urlsExport.xlsx',function (err) {
+            if(err){
+              res.json({code: 0, msg: '系统错误'})
+            }else{
+              res.json({code: 1})
+            }
+          })
+
+        }
+      })
+
+    } else {
+      res.json({code: 0, msg: '系统错误'})
+    }
+  })
+})
 app.listen(3123, function () {
   console.log('Node app start at port 3123')
 })
